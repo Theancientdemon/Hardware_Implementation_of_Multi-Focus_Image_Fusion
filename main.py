@@ -396,6 +396,9 @@ class App:
         temp = pygame.image.load("assets/data.png")
         self.screen.blit(temp, (0, 0), temp.get_rect())
 
+        temp = self.big_symbol_font.render(str(self.clock.get_fps()), True, colors.WHITE, colors.BLACK)
+        self.screen.blit(temp, (10,10), temp.get_rect() )
+
         if self.img2_path is not None:
             self.screen.blit(self.star_symbol_small, (10, 230), self.reg_symbol_small.get_rect())
 
