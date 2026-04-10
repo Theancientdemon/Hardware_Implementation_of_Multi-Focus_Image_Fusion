@@ -1,5 +1,6 @@
 import os.path
 import sys
+from datetime import datetime
 from enum import Enum, auto
 
 import pygame
@@ -556,8 +557,10 @@ class App:
 
     def capturePhoto(self):
         print("capturing image")
-        return
-        file_path = ""
+        now = datetime.now()
+        formatted = f"{now.year} {now.month:02} {now.day:02} {now.hour:02} {now.minute:02} {now.second:02}.png"
+        print(formatted)
+        file_path = formatted
         self.cam.capture_file(file_path)
         if self.do_Fusion:
             if self.img1_path is None:
