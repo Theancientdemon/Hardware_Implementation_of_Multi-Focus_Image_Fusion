@@ -555,6 +555,8 @@ class App:
         pygame.draw.rect(self.screen, colors.WHITE, (0, 50 + 50 * self.advance_rule_setting_active, 480, 50), 5)
 
     def capturePhoto(self):
+        print("capturing image")
+        return
         file_path = ""
         self.cam.capture_file(file_path)
         if self.do_Fusion:
