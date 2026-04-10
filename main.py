@@ -5,6 +5,7 @@ from enum import Enum, auto
 import pygame
 from picamera2 import Picamera2
 import colors
+from Tools import IllegalEntryError
 from algorithms.Fusion import Fusion
 from algorithms.Registration import Registration
 
@@ -95,6 +96,7 @@ class App:
             self.screen.fill(colors.BLACK)
             self.inputHandler()
 
+            # noinspection PyUnreachableCode
             match self.state:
                 case State.CAMERA:
                     self.renderCamera()
@@ -450,6 +452,8 @@ class App:
             self.screen.blit(self.registration_text, (10, 0), self.registration_text.get_rect())
             wave_txt = self.big_symbol_font.render(self.registration_wavelet, True, colors.GREEN)
             lvl_txt = self.big_symbol_font.render(str(self.registration_level), True, colors.GREEN)
+        else:
+            raise IllegalEntryError("illegal entry into advance settings")
         self.screen.blit(self.wavelet_text, (10, 50), self.wavelet_text.get_rect())
         self.screen.blit(self.level_text, (10, 100), self.level_text.get_rect())
         self.screen.blit(wave_txt, (250, 50), wave_txt.get_rect())
@@ -480,6 +484,8 @@ class App:
                     wave,
                     True,
                     colors.GREEN if self.fusion_wavelet == wave else colors.WHITE)
+            else:
+                raise IllegalEntryError("illegal entry into wavelet select screen")
             self.screen.blit(temp,(10,y), temp.get_rect())
         pygame.draw.rect(self.screen, colors.WHITE, (0, 60*self.wave_active - scroll_offset, 480, 60), 5)
 
@@ -501,11 +507,13 @@ class App:
                     str(i + 1),
                     True,
                     colors.GREEN if self.registration_level == i+1 else colors.WHITE)
-            if self.settings_active == 0:
+            elif self.settings_active == 0:
                 temp = self.big_symbol_font.render(
                     str(i + 1),
                     True,
                     colors.GREEN if self.fusion_level == i+1 else colors.WHITE)
+            else:
+                raise IllegalEntryError("illegal entry into level select screen")
             self.screen.blit(temp, (10, y), temp.get_rect())
         pygame.draw.rect(self.screen, colors.WHITE, (0, 60 * self.level_active - scroll_offset, 480, 60), 5)
 
