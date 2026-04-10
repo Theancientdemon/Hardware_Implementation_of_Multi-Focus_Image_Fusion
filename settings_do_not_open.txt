@@ -1,0 +1,8 @@
+True
+True
+db3
+haar
+2
+2
+max
+max
