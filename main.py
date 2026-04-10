@@ -561,7 +561,9 @@ class App:
         formatted = f"{now.year} {now.month:02} {now.day:02} {now.hour:02} {now.minute:02} {now.second:02}.png"
         print(formatted)
         file_path = formatted
-        self.cam.capture_file(file_path)
+        a = self.cam.capture_file(file_path)
+        print(a)
+        return
         if self.do_Fusion:
             if self.img1_path is None:
                 self.img1_path = file_path
