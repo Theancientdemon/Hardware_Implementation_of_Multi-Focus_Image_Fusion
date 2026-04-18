@@ -576,6 +576,7 @@ class App:
             print(formatted)
             file_path = formatted
             self.cam.capture_file(file_path)
+        print(f"file saved, {file_path}")
         if self.do_Fusion:
             if self.img1_path is None:
                 self.img1_path = file_path
