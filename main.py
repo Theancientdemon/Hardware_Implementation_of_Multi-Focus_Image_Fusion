@@ -22,6 +22,7 @@ class State(Enum):
     LEVEL_SELECT = auto()
     WAVE_SELECT = auto()
     RULE_SELECT = auto()
+    CHANNEL_SELECT = auto()
     ADVANCE_RULE_SETTING = auto()
 
 class App:
