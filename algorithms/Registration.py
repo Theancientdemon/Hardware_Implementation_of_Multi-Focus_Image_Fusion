@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import cv2
 import numpy as np
 from pywt import wavedec
@@ -20,8 +22,9 @@ class Registration:
 
         reg_img = cv2.warpAffine(query, M, (query.shape[1], query.shape[0])), x * (2 ** level), y * (2 ** level)
 
-        # TODO add a path below for registration
-        reg_path = "add/a/path/here.img_ext"
+        now = datetime.now()
+        reg_path = f"photos/registered/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
+
         cv2.imwrite(reg_path, reg_img)
 
         return reg_path

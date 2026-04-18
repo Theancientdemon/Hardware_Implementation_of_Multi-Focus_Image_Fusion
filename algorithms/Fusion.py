@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import cv2
 import numpy as np
 from numpy import uint8, clip, where
@@ -43,8 +45,8 @@ class Fusion:
         fused_img = waverec2(fused_coeff, wavelet)
         fused_img = clip(fused_img, 0, 255).astype(uint8)
 
-        # TODO add a path below for fusion
-        fused_path = "add/a/path/here.img_ext"
+        now = datetime.now()
+        fused_path = f"photos/fused/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
         cv2.imwrite(fused_path, fused_img)
         return fused_path
 
@@ -95,8 +97,8 @@ class Fusion:
         fused_img = cv2.merge([fused_R, fused_G, fused_B])
         fused_img = clip(fused_img, 0, 255).astype(uint8)
 
-        # TODO add a path below for fusion
-        fused_path = "add/a/path/here.img_ext"
+        now = datetime.now()
+        fused_path = f"photos/fused/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
         cv2.imwrite(fused_path, fused_img)
         return fused_path
 
