@@ -48,6 +48,7 @@ class Fusion:
         now = datetime.now()
         fused_path = f"photos/fused/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
         cv2.imwrite(fused_path, fused_img)
+        print(f"Fusion complete. file saved: {fused_path}")
         return fused_path
 
     @classmethod
