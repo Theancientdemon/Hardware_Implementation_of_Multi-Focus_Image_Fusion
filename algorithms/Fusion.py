@@ -35,7 +35,7 @@ class Fusion:
             if type(c1) == type(tuple()):
                 tup = []
                 for band1, band2 in zip(c1, c2):
-                    temp = cls.fuseBandbyRule(c1, c2, detail_rule)
+                    temp = cls.fuseBandbyRule(band1, band2, detail_rule)
                     tup.append(temp)
                 fused_coeff.append(tuple(tup))
             else:

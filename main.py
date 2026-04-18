@@ -4,7 +4,6 @@ from datetime import datetime
 from enum import Enum, auto
 
 import pygame
-from picamera2 import Picamera2
 import colors
 from Tools import IllegalEntryError
 from algorithms.Fusion import Fusion
@@ -33,19 +32,26 @@ class App:
         # Rules List
         self.rule_list = ["max", "min", "avg", "lv", "sml"]
 
-        # Camera Config
-        self.cam = Picamera2()
-        config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
-        # Set manual focus
-        self.lensposition = 1.5
-        self.cam.set_controls({
-            "AfMode": 0,  # 0 = Manual focus
-            "LensPosition": self.lensposition  # Adjust this value (range ~0.0 to 10.0)
-        })
-        self.cam.start()
-
         pygame.init()
         self.screensize = (480,320)
+
+        if "-t" in sys.argv:
+            self.testcase = True
+        else:
+            self.testcase = False
+            from picamera2 import Picamera2
+            # Camera Config
+            self.cam = Picamera2()
+            config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
+            # Set manual focus
+            self.lensposition = 1.5
+            self.cam.set_controls({
+                "AfMode": 0,  # 0 = Manual focus
+                "LensPosition": self.lensposition  # Adjust this value (range ~0.0 to 10.0)
+            })
+            self.cam.start()
+
+
 
         if "-f" in sys.argv:
             self.screen = pygame.display.set_mode(self.screensize, pygame.FULLSCREEN)
@@ -324,6 +330,7 @@ class App:
         small_symbol_font = pygame.font.SysFont("Arial", 20)
         self.big_symbol_font = pygame.font.SysFont("Arial", 50)
 
+        self.screenPlaceHolder = pygame.image.load("assets/img_2.png")
         self.settingsIcon = pygame.image.load("assets/settingsicon2.png")
         self.powerIcon = pygame.image.load("assets/power_button.png")
 
@@ -393,16 +400,15 @@ class App:
         self.no_text.blit(temp, (20, 0), temp.get_rect())
 
     def renderCamera(self):
-        # temp = self.cam.capture_array("main")
-        # temp = pygame.image.frombuffer(temp.data, self.screensize, 'BGR')
-        self.cam.capture_file("assets/data.png")
-        temp = pygame.image.load("assets/data.png")
+
+        if self.testcase:
+            temp = self.screenPlaceHolder
+        else:
+            self.cam.capture_file("assets/data.png")
+            temp = pygame.image.load("assets/data.png")
         self.screen.blit(temp, (0, 0), temp.get_rect())
 
-        temp = self.big_symbol_font.render(str(self.clock.get_fps()), True, colors.WHITE, colors.BLACK)
-        self.screen.blit(temp, (10,10), temp.get_rect() )
-
-        if self.img2_path is not None:
+        if self.img1_path is not None:
             self.screen.blit(self.star_symbol_small, (10, 230), self.reg_symbol_small.get_rect())
 
         if self.do_registration:
@@ -557,11 +563,17 @@ class App:
 
     def capturePhoto(self):
         print("capturing image")
-        now = datetime.now()
-        formatted = f"{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
-        print(formatted)
-        file_path = formatted
-        self.cam.capture_file(file_path)
+        if self.testcase:
+            if self.img1_path is None:
+                file_path = "photos/test/book1.jpg"
+            else:
+                file_path = "photos/test/book2.jpg"
+        else:
+            now = datetime.now()
+            formatted = f"{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
+            print(formatted)
+            file_path = formatted
+            self.cam.capture_file(file_path)
         if self.do_Fusion:
             if self.img1_path is None:
                 self.img1_path = file_path
@@ -579,12 +591,13 @@ class App:
                                           self.fusion_level,
                                           self.approx_rule,
                                           self.detail_rule,
-                                          1)
+                                          3)
 
             self.img1_path = None
             self.img2_path = None
 
     def focusFar(self):
+        return
         self.lensposition -= 0.5
         if self.lensposition < 0:
             self.lensposition = 0
@@ -593,6 +606,7 @@ class App:
         })
 
     def focusNear(self):
+        return
         self.lensposition += 0.5
         if self.lensposition > 10:
             self.lensposition = 10

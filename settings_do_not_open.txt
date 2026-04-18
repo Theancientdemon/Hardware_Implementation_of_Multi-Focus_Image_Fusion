@@ -1,8 +1,8 @@
 True
-True
-db3
+False
+db5
 haar
+5
 2
-2
-max
-max
+lv
+lv
