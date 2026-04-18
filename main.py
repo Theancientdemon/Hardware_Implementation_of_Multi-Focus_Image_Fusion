@@ -18,6 +18,7 @@ class State(Enum):
     ASK_PHOTO = auto()
     ASK_FUSE = auto()
     ASK_QUIT = auto()
+    VIEW_PHOTO = auto()
 
     LEVEL_SELECT = auto()
     WAVE_SELECT = auto()
