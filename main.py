@@ -572,7 +572,7 @@ class App:
                 file_path = "photos/test/book2.jpg"
         else:
             now = datetime.now()
-            formatted = f"{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
+            formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
             file_path = formatted
             self.cam.capture_file(file_path)
