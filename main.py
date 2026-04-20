@@ -48,10 +48,6 @@ class App:
             config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
             self.cam.configure(config)
             self.cam.start()
-            self.cam2 = Picamera2()
-            config2 = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
-            self.cam2.configure(config2)
-            self.cam2.start()
 
         if "-f" in sys.argv:
             self.screen = pygame.display.set_mode(self.screensize, pygame.FULLSCREEN)
@@ -569,11 +565,15 @@ class App:
             else:
                 file_path = "photos/test/book2.jpg"
         else:
+            config = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
+            self.cam.configure(config)
             now = datetime.now()
             formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
             file_path = formatted
-            self.cam2.capture_file(file_path)
+            self.cam.capture_file(file_path)
+            config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
+            self.cam.configure(config)
         print(f"file saved, {file_path}")
         if self.do_Fusion:
             if self.img1_path is None:
