@@ -45,7 +45,7 @@ class App:
             from picamera2 import Picamera2
             # Camera Config
             self.cam = Picamera2()
-            config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
+            config = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
             self.cam.configure(config)
             self.cam.start()
 
@@ -400,7 +400,7 @@ class App:
         if self.testcase:
             temp = self.screenPlaceHolder
         else:
-            self.cam.capture_file("assets/data.png")
+            print(self.cam.capture_array("lores").shape)
             temp = pygame.image.load("assets/data.png")
         self.screen.blit(temp, (0, 0), temp.get_rect())
 
@@ -565,15 +565,11 @@ class App:
             else:
                 file_path = "photos/test/book2.jpg"
         else:
-            config = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
-            self.cam.configure(config)
             now = datetime.now()
             formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
             file_path = formatted
             self.cam.capture_file(file_path)
-            config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
-            self.cam.configure(config)
         print(f"file saved, {file_path}")
         if self.do_Fusion:
             if self.img1_path is None:
