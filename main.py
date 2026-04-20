@@ -35,8 +35,8 @@ class App:
         self.rule_list = ["max", "min", "avg", "lv", "sml"]
 
         pygame.init()
-        self.screensize = (480,320)
         self.focusValue = 0
+        self.screensize = (480,320)
 
         if "-t" in sys.argv:
             self.testcase = True
@@ -48,6 +48,10 @@ class App:
             config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
             self.cam.configure(config)
             self.cam.start()
+            self.cam2 = Picamera2()
+            config2 = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
+            self.cam2.configure(config2)
+            self.cam2.start()
 
         if "-f" in sys.argv:
             self.screen = pygame.display.set_mode(self.screensize, pygame.FULLSCREEN)
@@ -569,7 +573,7 @@ class App:
             formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
             file_path = formatted
-            self.cam.capture_file(file_path)
+            self.cam2.capture_file(file_path)
         print(f"file saved, {file_path}")
         if self.do_Fusion:
             if self.img1_path is None:
@@ -595,15 +599,15 @@ class App:
 
     def focusFar(self):
         #command v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={value} 0-1023
-        self.focusValue += 50
-        if self.focusValue > 1000:
-            self.focusValue = 1000
-        os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
-
-    def focusNear(self):
         self.focusValue -= 50
         if self.focusValue < 0:
             self.focusValue = 0
+        os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
+
+    def focusNear(self):
+        self.focusValue += 50
+        if self.focusValue > 1000:
+            self.focusValue = 1000
         os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
 
     def loadSettings(self):
