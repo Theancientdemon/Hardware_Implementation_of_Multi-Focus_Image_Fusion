@@ -9,11 +9,12 @@ from skimage.registration import phase_cross_correlation
 class Registration:
     @classmethod
     def register(cls, ref, query, wavelet, level):
-        query = cv2.imread(query, cv2.IMREAD_GRAYSCALE)
-        ref = cv2.imread(ref, cv2.IMREAD_GRAYSCALE)
+        query = cv2.imread(query)
+        q_bw = cv2.cvtColor(query, cv2.COLOR_BGR2GRAY)
+        r_bw = cv2.imread(ref, cv2.IMREAD_GRAYSCALE)
 
-        q_wt = wavedec(query, wavelet, level=level)[0]
-        r_wt = wavedec(ref, wavelet, level=level)[0]
+        q_wt = wavedec(q_bw, wavelet, level=level)[0]
+        r_wt = wavedec(r_bw, wavelet, level=level)[0]
 
         (x, y), err, _ = phase_cross_correlation(r_wt, q_wt)
 
