@@ -600,12 +600,15 @@ class App:
         if self.focusValue < 0:
             self.focusValue = 0
         os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
+        print(f"focus:{self.focusValue}")
 
     def focusNear(self):
         self.focusValue += 50
         if self.focusValue > 1000:
             self.focusValue = 1000
         os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
+        print(f"focus:{self.focusValue}")
+
 
     def loadSettings(self):
         if os.path.exists(self.settings_file_path):
