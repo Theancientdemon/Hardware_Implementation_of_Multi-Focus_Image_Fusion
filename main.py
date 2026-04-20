@@ -36,6 +36,7 @@ class App:
 
         pygame.init()
         self.screensize = (480,320)
+        self.focusValue = 0
 
         if "-t" in sys.argv:
             self.testcase = True
@@ -45,15 +46,8 @@ class App:
             # Camera Config
             self.cam = Picamera2()
             config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
-            # Set manual focus
-            self.lensposition = 1.5
-            self.cam.set_controls({
-                "AfMode": 0,  # 0 = Manual focus
-                "LensPosition": self.lensposition  # Adjust this value (range ~0.0 to 10.0)
-            })
+            self.cam.set_controls(config)
             self.cam.start()
-
-
 
         if "-f" in sys.argv:
             self.screen = pygame.display.set_mode(self.screensize, pygame.FULLSCREEN)
@@ -600,22 +594,17 @@ class App:
             self.img2_path = None
 
     def focusFar(self):
-        return
-        self.lensposition -= 0.5
-        if self.lensposition < 0:
-            self.lensposition = 0
-        self.cam.set_controls({
-            "LensPosition": self.lensposition  # Adjust this value (range ~0.0 to 10.0)
-        })
+        #command v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={value} 0-1023
+        self.focusValue += 50
+        if self.focusValue > 1000:
+            self.focusValue = 1000
+        os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
 
     def focusNear(self):
-        return
-        self.lensposition += 0.5
-        if self.lensposition > 10:
-            self.lensposition = 10
-        self.cam.set_controls({
-            "LensPosition": self.lensposition  # Adjust this value (range ~0.0 to 10.0)
-        })
+        self.focusValue -= 50
+        if self.focusValue < 0:
+            self.focusValue = 0
+        os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
 
     def loadSettings(self):
         if os.path.exists(self.settings_file_path):
