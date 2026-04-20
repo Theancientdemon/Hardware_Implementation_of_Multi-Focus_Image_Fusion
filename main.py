@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 from enum import Enum, auto
 
+import cv2
 import pygame
 import colors
 from Tools import IllegalEntryError
@@ -45,7 +46,7 @@ class App:
             from picamera2 import Picamera2
             # Camera Config
             self.cam = Picamera2()
-            config = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
+            config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
             self.cam.configure(config)
             self.cam.start()
 
@@ -400,7 +401,7 @@ class App:
         if self.testcase:
             temp = self.screenPlaceHolder
         else:
-            print(self.cam.capture_array("lores").shape)
+            self.cam.capture_file("assets/data.png")
             temp = pygame.image.load("assets/data.png")
         self.screen.blit(temp, (0, 0), temp.get_rect())
 
