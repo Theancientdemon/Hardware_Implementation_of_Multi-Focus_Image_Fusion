@@ -454,12 +454,12 @@ class App:
         self.no_text.blit(temp, (20, 0), temp.get_rect())
 
     def renderCamera(self):
-
         if self.testcase:
             temp = self.screenPlaceHolder
         else:
-            self.cam.capture_file("assets/data.png")
-            temp = pygame.image.load("assets/data.png")
+            temp = self.cam.capture_array("lores")
+            temp = cv2.cvtColor(temp, cv2.COLOR_YUV2RGB)
+            temp = pygame.surfarray.make_surface(temp.swapaxes(0,1))
         self.screen.blit(temp, (0, 0), temp.get_rect())
 
         if self.img1_path is not None:
@@ -518,8 +518,9 @@ class App:
 
     def renderViewPhoto(self):
         if self.viewPhotoSurface is None:
-            temp = cv2.imread(self.capturedIMG_path, cv2.IMREAD_COLOR_RGB)
+            temp = cv2.imread(self.capturedIMG_path)
             temp = cv2.resize(temp, self.screensize)
+            temp = cv2.cvtColor(temp, cv2.COLOR_BGR2RGB)
             self.viewPhotoSurface = pygame.surfarray.make_surface(temp.swapaxes(0,1))
         self.screen.blit(self.viewPhotoSurface, (0,0), self.viewPhotoSurface.get_rect())
 
