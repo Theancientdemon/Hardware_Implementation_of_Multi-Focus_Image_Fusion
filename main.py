@@ -233,6 +233,8 @@ class App:
                 self.viewPhotoSurface = None
             case State.ASK_PHOTO:
                 self.state = State.CAMERA
+            case State.CHANNEL_SELECT:
+                self.state = State.ADVANCE_RULE_SETTING
 
     def down_key(self):
         match self.state:
