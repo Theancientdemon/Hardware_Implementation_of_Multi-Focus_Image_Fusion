@@ -46,7 +46,7 @@ class App:
             from picamera2 import Picamera2
             # Camera Config
             self.cam = Picamera2()
-            config = self.cam.create_still_configuration(main={"size": (480, 320)}, lores={"size": (480, 320)})
+            config = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
             self.cam.configure(config)
             self.cam.start()
 
