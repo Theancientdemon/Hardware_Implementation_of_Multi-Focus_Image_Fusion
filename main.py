@@ -73,6 +73,8 @@ class App:
 
         # State defaults to and starts at CAMERA MODE
         self.state = State.CAMERA
+        self.viewPhotoSurface = None
+        self.capturedIMG_path = None
         self.img1_path = None
         self.img2_path = None
         self.fused_path = None
@@ -86,6 +88,7 @@ class App:
         self.level_active = 0
         self.rule_active = 0
         self.advance_rule_setting_active = 0
+        self.channel_sel_active = 0
         # ------------------------------------ #
 
         self.loadSettings()
@@ -112,8 +115,6 @@ class App:
                     self.askQuit()
                 case State.ADVANCE_SETTING:
                     self.renderAdvanceSetting()
-                case State.ASK_PHOTO:
-                    pass
                 case State.LEVEL_SELECT:
                     self.renderLevelSel()
                 case State.WAVE_SELECT:
@@ -122,6 +123,14 @@ class App:
                     self.renderRuleSel()
                 case State.ADVANCE_RULE_SETTING:
                     self.renderAdvanceRuleSetting()
+                case State.CHANNEL_SELECT:
+                    self.renderChannelSelect()
+                case State.ASK_FUSE:
+                    self.renderAskFuse()
+                case State.ASK_PHOTO:
+                    self.renderAskPhoto()
+                case State.VIEW_PHOTO:
+                    self.renderViewPhoto()
                 case _:
                     # Fall back to CAMERA MODE
                     self.state = State.CAMERA
@@ -215,6 +224,15 @@ class App:
                 self.state = State.ADVANCE_RULE_SETTING
             case State.ADVANCE_RULE_SETTING:
                 self.state = State.SETTINGS
+            case State.ASK_FUSE:
+                self.state = State.CAMERA
+                self.img1_path = None
+                self.img2_path = None
+            case State.VIEW_PHOTO:
+                self.state = State.ASK_PHOTO
+                self.viewPhotoSurface = None
+            case State.ASK_PHOTO:
+                self.state = State.CAMERA
 
     def down_key(self):
         match self.state:
@@ -240,7 +258,13 @@ class App:
                 self.rule_active %= len(self.rule_list)
             case State.ADVANCE_RULE_SETTING:
                 self.advance_rule_setting_active += 1
-                self.advance_rule_setting_active %= 2
+                self.advance_rule_setting_active %= 3
+            case State.CHANNEL_SELECT:
+                self.channel_sel_active += 1
+                self.channel_sel_active %= 2
+            case State.VIEW_PHOTO:
+                self.state = State.ASK_PHOTO
+                self.viewPhotoSurface = None
 
     def up_key(self):
         match self.state:
@@ -266,7 +290,15 @@ class App:
                 self.rule_active %= len(self.rule_list)
             case State.ADVANCE_RULE_SETTING:
                 self.advance_rule_setting_active -= 1
-                self.advance_rule_setting_active %= 2
+                self.advance_rule_setting_active %= 3
+            case State.CHANNEL_SELECT:
+                self.channel_sel_active += 1
+                self.channel_sel_active %= 2
+            case State.VIEW_PHOTO:
+                self.state = State.ASK_PHOTO
+                self.viewPhotoSurface = None
+            case State.ASK_PHOTO:
+                self.state = State.VIEW_PHOTO
 
     def A_key(self):
         match self.state:
@@ -321,7 +353,30 @@ class App:
                 self.state = State.ADVANCE_RULE_SETTING
                 self.saveSettings()
             case State.ADVANCE_RULE_SETTING:
-                self.state = State.RULE_SELECT
+                if self.advance_rule_setting_active == 2:
+                    self.state = State.CHANNEL_SELECT
+                else:
+                    self.state = State.RULE_SELECT
+            case State.CHANNEL_SELECT:
+                if self.channel_sel_active:
+                    self.fuse_channel = 3
+                else:
+                    self.fuse_channel = 1
+                self.state = State.ADVANCE_RULE_SETTING
+                self.saveSettings()
+            case State.VIEW_PHOTO:
+                self.state = State.ASK_PHOTO
+                self.viewPhotoSurface = None
+            case State.ASK_PHOTO:
+                if self.img1_path is None:
+                    self.img1_path = self.capturedIMG_path
+                    self.state = State.CAMERA
+                else:
+                    self.img2_path = self.capturedIMG_path
+                    self.state = State.ASK_FUSE
+            case State.ASK_FUSE:
+                self.fuse_photos()
+                self.state = State.CAMERA
 
     def createAssets(self):
         small_symbol_font = pygame.font.SysFont("Arial", 20)
@@ -371,11 +426,6 @@ class App:
         temp = self.big_symbol_font.render("PLEASE WAIT", True, colors.WHITE)
         self.please_wait_screen.blit(temp, (0, 0), temp.get_rect())
 
-        self.settingsPlaceholder = pygame.Surface(self.screensize)
-        self.settingsPlaceholder.fill(colors.BLACK)
-        temp = self.big_symbol_font.render("SETTINGS", True, colors.WHITE)
-        self.settingsPlaceholder.blit(temp, (10, 0), temp.get_rect())
-
         self.fusion_text = self.big_symbol_font.render("FUSION", True, colors.WHITE)
         self.registration_text = self.big_symbol_font.render("REGISTRATION", True, colors.WHITE)
         self.settings_text = self.big_symbol_font.render("SETTINGS", True, colors.WHITE)
@@ -385,6 +435,11 @@ class App:
         self.rule_text = self.big_symbol_font.render("RULE", True, colors.WHITE)
         self.approx_text = self.big_symbol_font.render("APPROX.", True, colors.WHITE)
         self.detail_text = self.big_symbol_font.render("DETAIL", True, colors.WHITE)
+        self.channel_text = self.big_symbol_font.render("CHANNEL", True, colors.WHITE)
+        self.askFuse_text = self.big_symbol_font.render("FUSE PHOTOS", True, colors.WHITE)
+        self.askPhotos_text = self.big_symbol_font.render("USE FOR FUSE", True, colors.WHITE)
+        self.view_text = small_symbol_font.render("VIEW", True, colors.WHITE)
+        self.up_text = self.big_symbol_font.render("^", True, colors.WHITE)
 
         self.yes_text = pygame.Surface((100,50))
         self.yes_text.fill(colors.GREEN)
@@ -446,6 +501,25 @@ class App:
         self.screen.blit(self.quit_text, (180, 100), self.quit_text.get_rect())
         self.screen.blit(self.yes_text, (310, 200), self.yes_text.get_rect())
         self.screen.blit(self.no_text, (70, 200), self.no_text.get_rect())
+
+    def renderAskFuse(self):
+        self.screen.blit(self.askFuse_text, (90, 100), self.askFuse_text.get_rect())
+        self.screen.blit(self.yes_text, (310, 200), self.yes_text.get_rect())
+        self.screen.blit(self.no_text, (70, 200), self.no_text.get_rect())
+
+    def renderAskPhoto(self):
+        self.screen.blit(self.askPhotos_text, (90, 100), self.askPhotos_text.get_rect())
+        self.screen.blit(self.yes_text, (310, 200), self.yes_text.get_rect())
+        self.screen.blit(self.no_text, (70, 200), self.no_text.get_rect())
+        self.screen.blit(self.view_text, (220, 200), self.view_text.get_rect())
+        self.screen.blit(self.up_text, (230, 220), self.up_text.get_rect())
+
+    def renderViewPhoto(self):
+        if self.viewPhotoSurface is None:
+            temp = cv2.imread(self.capturedIMG_path, cv2.IMREAD_COLOR_RGB)
+            temp = cv2.resize(temp, self.screensize)
+            self.viewPhotoSurface = pygame.surfarray.make_surface(temp.swapaxes(0,1))
+        self.screen.blit(self.viewPhotoSurface, (0,0), self.viewPhotoSurface.get_rect())
 
     def renderAdvanceSetting(self):
         if self.settings_active == 0:
@@ -555,44 +629,37 @@ class App:
         self.screen.blit(self.detail_text, (10, 100), self.detail_text.get_rect())
         temp = self.big_symbol_font.render(self.detail_rule, True, colors.GREEN)
         self.screen.blit(temp, (250, 100), temp.get_rect())
+        self.screen.blit(self.channel_text, (10, 150), self.channel_text.get_rect())
+        temp = self.big_symbol_font.render(str(self.fuse_channel), True, colors.GREEN)
+        self.screen.blit(temp, (250, 150), temp.get_rect())
 
         pygame.draw.rect(self.screen, colors.WHITE, (0, 50 + 50 * self.advance_rule_setting_active, 480, 50), 5)
+
+    def renderChannelSelect(self):
+        self.screen.blit(self.rule_text, (10, 0), self.rule_text.get_rect())
+        temp = self.big_symbol_font.render("1", True, colors.GREEN)
+        self.screen.blit(temp, (10, 50), temp.get_rect())
+        temp = self.big_symbol_font.render("3", True, colors.GREEN)
+        self.screen.blit(temp, (10, 100), temp.get_rect())
+
+        pygame.draw.rect(self.screen, colors.WHITE, (0, 50 + 50 * self.channel_sel_active, 480, 50), 5)
 
     def capturePhoto(self):
         print("capturing image")
         if self.testcase:
             if self.img1_path is None:
-                file_path = "photos/test/book1.jpg"
+                self.capturedIMG_path = "photos/test/book1.jpg"
             else:
-                file_path = "photos/test/book2.jpg"
+                self.capturedIMG_path = "photos/test/book2.jpg"
         else:
             now = datetime.now()
             formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
-            file_path = formatted
-            self.cam.capture_file(file_path)
-        print(f"file saved, {file_path}")
+            self.capturedIMG_path = formatted
+            self.cam.capture_file(self.capturedIMG_path)
+        print(f"file saved, {self.capturedIMG_path}")
         if self.do_Fusion:
-            if self.img1_path is None:
-                self.img1_path = file_path
-                return
-            else:
-                self.img2_path = file_path
-            if self.do_registration:
-                self.img2_path = Registration.register(self.img1_path,
-                                                       self.img2_path,
-                                                       self.registration_wavelet,
-                                                       self.registration_level)
-            self.fused_path = Fusion.fuse(self.img1_path,
-                                          self.img2_path,
-                                          self.fusion_wavelet,
-                                          self.fusion_level,
-                                          self.approx_rule,
-                                          self.detail_rule,
-                                          3)
-
-            self.img1_path = None
-            self.img2_path = None
+            self.state = State.ASK_PHOTO
 
     def focusFar(self):
         #command v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={value} 0-1023
@@ -609,7 +676,6 @@ class App:
         os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
         print(f"focus:{self.focusValue}")
 
-
     def loadSettings(self):
         if os.path.exists(self.settings_file_path):
             with open(self.settings_file_path) as file: data = file.readlines()
@@ -621,6 +687,7 @@ class App:
             self.registration_level = int(data[5]) if data[5].strip().isdigit() else 2
             self.approx_rule = data[6].strip() if data[6].strip() in self.rule_list else self.rule_list[0]
             self.detail_rule = data[7].strip() if data[7].strip() in self.rule_list else self.rule_list[0]
+            self.fuse_channel = int(data[8]) if data[8].strip() in ("1", "3") else 3
         else:
             # Default settings
             self.do_Fusion = True
@@ -631,6 +698,7 @@ class App:
             self.registration_level = 2
             self.approx_rule = self.rule_list[0]
             self.detail_rule = self.rule_list[0]
+            self.fuse_channel = 3
 
     def saveSettings(self):
         with open(self.settings_file_path, "wt") as file:
@@ -642,7 +710,23 @@ class App:
             file.write(str(self.registration_level)+"\n")
             file.write(self.approx_rule+"\n")
             file.write(self.detail_rule+"\n")
+            file.write(str(self.fuse_channel)+"\n")
 
+    def fuse_photos(self):
+        if self.do_registration:
+            self.img2_path = Registration.register(self.img1_path,
+                                                   self.img2_path,
+                                                   self.registration_wavelet,
+                                                   self.registration_level)
+        self.fused_path = Fusion.fuse(self.img1_path,
+                                      self.img2_path,
+                                      self.fusion_wavelet,
+                                      self.fusion_level,
+                                      self.approx_rule,
+                                      self.detail_rule,
+                                      self.fuse_channel)
+        self.img1_path = None
+        self.img2_path = None
 
 
 if __name__ == "__main__":
