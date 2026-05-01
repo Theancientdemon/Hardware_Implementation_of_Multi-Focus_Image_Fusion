@@ -1,17 +1,21 @@
 import os.path
 import sys
+import warnings
 from datetime import datetime
 from enum import Enum, auto
 
 import cv2
 import pygame
 import colors
-from Tools import IllegalEntryError
+from Tools import IllegalEntryError, SettingsError
 from algorithms.Fusion import Fusion
 from algorithms.Registration import Registration
 
 
 class State(Enum):
+    """
+        Dictates which State the app is on (Which screen is app on).
+    """
     CAMERA = auto()
     QUICK = auto()
     SETTINGS = auto()
@@ -27,23 +31,36 @@ class State(Enum):
     CHANNEL_SELECT = auto()
     ADVANCE_RULE_SETTING = auto()
 
+
 class App:
+    """
+        Main Class for Whole app.
+        Contains UI as well as controls.
+        USAGE: App()
+        Note: All process is done in constructor.
+    """
     def __init__(self):
+        # Settings file.
+        # Don't manually change file but through app only.
         self.settings_file_path = "settings_do_not_open.txt"
+        # To update the wavelet list and rules list. Make changes to "algorithms/Fusion.py"
         # Wavelet List
-        self.wavelet_list = ["haar", "db1", "db2", "db3", "db4", "db5", "db6", "db7", "db8", "db9", "db10"]
+        self.wavelet_list = Fusion.Wavelet_list
         # Rules List
-        self.rule_list = ["max", "min", "avg", "lv", "sml"]
+        self.rule_list = Fusion.Rules
 
         pygame.init()
         self.focusValue = 0
+        # The app is designed for below size only. changing it may cause issues
         self.screensize = (480,320)
 
         if "-t" in sys.argv:
+            # Can work on non-raspberry pi devices.
             self.testcase = True
         else:
+            # Only works on raspberry pi due to dependencies
             self.testcase = False
-            from picamera2 import Picamera2
+            from picamera2 import Picamera2  # rpi only dependencys
             # Camera Config
             self.cam = Picamera2()
             config = self.cam.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (480, 320)})
@@ -56,7 +73,6 @@ class App:
             self.screen = pygame.display.set_mode(self.screensize)
 
         self.running = True
-        self.clock = pygame.time.Clock()
 
         # Input Type for which input is taken
         # Keyboard
@@ -96,14 +112,15 @@ class App:
         self.appLoop()
 
     def quit(self):
+        """Closes the app"""
         pygame.quit()
 
     def appLoop(self):
+        """Main loop which keeps the app running"""
         while self.running:
             self.screen.fill(colors.BLACK)
             self.inputHandler()
 
-            # noinspection PyUnreachableCode
             match self.state:
                 case State.CAMERA:
                     self.renderCamera()
@@ -137,10 +154,13 @@ class App:
 
             # Update the screen
             pygame.display.flip()
-            self.clock.tick(30)
         self.quit()
 
     def inputHandler(self):
+        """
+        Handles the input of app.
+        Can be changed by changing var "inputType".
+        """
         match self.inputType:
             case "Keyboard":
                 self.keyboardHandler()
@@ -151,10 +171,14 @@ class App:
             case "Touch":
                 self.touchHandler()
             case _:
-                # Default to Keyboard
-                self.keyboardHandler()
+                # fallback to keyboard
+                print(f"\033[93mWARNING!:\033[0m '{self.inputType}' is not a valid input type. Falling back to Keyboard.")
+                self.inputType = "Keyboard"
 
     def keyboardHandler(self):
+        """
+        Handles Input from a Keyboard connected to the device
+        """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -174,6 +198,9 @@ class App:
                         self.A_key()
 
     def joystickHandler(self):
+        """
+        Handles input from a Video Game Controller.
+        """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -195,16 +222,21 @@ class App:
                         self.up_key()
 
     def buttonHandler(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
+        """
+        Handles input from the mechanical buttons connected to GPIO.
+        """
+        raise NotImplementedError("Buttons is to be implemented. program doesn't support buttons inputs yet")
 
     def touchHandler(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
+        """
+        Handles input from the touch screen.
+        """
+        raise NotImplementedError("touch input is to be implemented. program doesn't support buttons inputs yet")
 
     def B_key(self):
+        """
+        Actions to be done when the 'B' Key is pressed.
+        """
         match self.state:
             case State.CAMERA:
                 self.state = State.QUICK
@@ -237,6 +269,9 @@ class App:
                 self.state = State.ADVANCE_RULE_SETTING
 
     def down_key(self):
+        """
+        Actions to be done when the 'down' Key is pressed.
+        """
         match self.state:
             case State.CAMERA:
                 self.focusNear()
@@ -269,6 +304,9 @@ class App:
                 self.viewPhotoSurface = None
 
     def up_key(self):
+        """
+        Actions to be done when the 'up' Key is pressed.
+        """
         match self.state:
             case State.CAMERA:
                 self.focusFar()
@@ -303,6 +341,9 @@ class App:
                 self.state = State.VIEW_PHOTO
 
     def A_key(self):
+        """
+        Actions to be done when the 'A' Key is pressed.
+        """
         match self.state:
             case State.CAMERA:
                 self.capturePhoto()
@@ -378,9 +419,14 @@ class App:
                     self.state = State.ASK_FUSE
             case State.ASK_FUSE:
                 self.fuse_photos()
-                self.state = State.CAMERA
+                self.capturedIMG_path = self.fused_path
+                self.state = State.ASK_PHOTO
 
     def createAssets(self):
+        """
+        Creates the surfaces which will be used.
+        save computation.
+        """
         small_symbol_font = pygame.font.SysFont("Arial", 20)
         self.big_symbol_font = pygame.font.SysFont("Arial", 50)
 
@@ -648,6 +694,10 @@ class App:
         pygame.draw.rect(self.screen, colors.WHITE, (0, 50 + 50 * self.channel_sel_active, 480, 50), 5)
 
     def capturePhoto(self):
+        """
+        Captures Photo from Camera.
+        does set state to "ASK_PHOTO"
+        """
         print("capturing image")
         if self.testcase:
             if self.img1_path is None:
@@ -680,17 +730,23 @@ class App:
         print(f"focus:{self.focusValue}")
 
     def loadSettings(self):
+        """
+        Load settings from the settings file.
+        """
         if os.path.exists(self.settings_file_path):
             with open(self.settings_file_path) as file: data = file.readlines()
-            self.do_Fusion = True if data[0].strip() == "True" else False
-            self.do_registration = True if data[1].strip() == "True" else False
-            self.fusion_wavelet = data[2].strip() if data[2].strip() in self.wavelet_list else self.wavelet_list[0]
-            self.registration_wavelet = data[3].strip() if data[3].strip() in self.wavelet_list else self.wavelet_list[0]
-            self.fusion_level = int(data[4]) if data[4].strip().isdigit() else 2
-            self.registration_level = int(data[5]) if data[5].strip().isdigit() else 2
-            self.approx_rule = data[6].strip() if data[6].strip() in self.rule_list else self.rule_list[0]
-            self.detail_rule = data[7].strip() if data[7].strip() in self.rule_list else self.rule_list[0]
-            self.fuse_channel = int(data[8]) if data[8].strip() in ("1", "3") else 3
+            try:
+                self.do_Fusion = True if data[0].strip() == "True" else False
+                self.do_registration = True if data[1].strip() == "True" else False
+                self.fusion_wavelet = data[2].strip() if data[2].strip() in self.wavelet_list else self.wavelet_list[0]
+                self.registration_wavelet = data[3].strip() if data[3].strip() in self.wavelet_list else self.wavelet_list[0]
+                self.fusion_level = int(data[4]) if data[4].strip().isdigit() else 2
+                self.registration_level = int(data[5]) if data[5].strip().isdigit() else 2
+                self.approx_rule = data[6].strip() if data[6].strip() in self.rule_list else self.rule_list[0]
+                self.detail_rule = data[7].strip() if data[7].strip() in self.rule_list else self.rule_list[0]
+                self.fuse_channel = int(data[8]) if data[8].strip() in ("1", "3") else 3
+            except IndexError:
+                raise SettingsError(f"Error loading settings. Try Deleting '{self.settings_file_path}' files")
         else:
             # Default settings
             self.do_Fusion = True
@@ -704,6 +760,9 @@ class App:
             self.fuse_channel = 3
 
     def saveSettings(self):
+        """
+        Save the settings changes to Settings file.
+        """
         with open(self.settings_file_path, "wt") as file:
             file.write(str(self.do_Fusion)+"\n")
             file.write(str(self.do_registration)+"\n")
@@ -716,18 +775,17 @@ class App:
             file.write(str(self.fuse_channel)+"\n")
 
     def fuse_photos(self):
+        """
+        Fuse the 'img1_path' and 'img2_path' photos together.
+        If registration flag is active. also perform registration before fusion.
+        """
         if self.do_registration:
             self.img2_path = Registration.register(self.img1_path,
                                                    self.img2_path,
                                                    self.registration_wavelet,
                                                    self.registration_level)
-        self.fused_path = Fusion.fuse(self.img1_path,
-                                      self.img2_path,
-                                      self.fusion_wavelet,
-                                      self.fusion_level,
-                                      self.approx_rule,
-                                      self.detail_rule,
-                                      self.fuse_channel)
+        self.fused_path = Fusion.fuse(self.img1_path, self.img2_path, self.fusion_wavelet, self.fusion_level,
+                                      self.approx_rule, self.detail_rule, self.fuse_channel)
         self.img1_path = None
         self.img2_path = None
 

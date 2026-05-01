@@ -3,14 +3,34 @@ from datetime import datetime
 import cv2
 import numpy as np
 from numpy import uint8, clip, where
-from pywt import dwt2, waverec2
+from pywt import dwt2, waverec2, Wavelet
 from scipy.ndimage import median_filter
 from scipy.signal import convolve2d
 
 
 class Fusion:
+    # List of Wavelets which can be used
+    Wavelet_list = ["haar", "db1", "db2", "db3", "db4", "db5", "db6", "db7", "db8", "db9", "db10"]
+    # All Rules that can be used.
+    # To add a rule, update the @fuseBandbyRule and below list
+    Rules = ["lv", "sml", "max", "min", "avg" ]
+
     @classmethod
-    def fuse(cls, img1_path, img2_path, wavelet, level, approx_rule, detail_rule, channel=1):
+    def fuse(cls, img1_path: str, img2_path: str,
+             wavelet: str = Wavelet_list[0], level: int = 2,
+             approx_rule: str = Rules[0], detail_rule: str = Rules[0],
+             channel: int = 1) -> str:
+        """
+        Does a Multi-Focus Image fusion on both the provided images.
+        :param img1_path: path to the first image to be fused
+        :param img2_path: path to the second image to be fused
+        :param wavelet: wavelet to be used. Defaults to first value in wavelet_list
+        :param level: fusion level. Defaults to 2
+        :param approx_rule: fusion rule to be applied to the approx band. Defaults to first value in Rules
+        :param detail_rule: fusion rule to be applied to the detail band. Defaults to first value in Rules
+        :param channel: is fusion to be done on black-white images for color images. Defaults to sinle channel
+        :return: returns the path to the fused image.
+        """
         if channel == 1:
             return cls.singleChFuse(img1_path, img2_path, wavelet, level, approx_rule, detail_rule)
         elif channel == 3:
