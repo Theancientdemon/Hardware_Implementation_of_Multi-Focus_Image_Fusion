@@ -1,13 +1,13 @@
 import os.path
-import sys
-import warnings
+from argparse import ArgumentParser
 from datetime import datetime
 from enum import Enum, auto
 
 import cv2
 import pygame
+
 import colors
-from Tools import IllegalEntryError, SettingsError
+from Tools import SettingsError
 from algorithms.Fusion import Fusion
 from algorithms.Registration import Registration
 
@@ -49,12 +49,14 @@ class App:
         # Rules List
         self.rule_list = Fusion.Rules
 
+        self.parse_args()
+
         pygame.init()
         self.focusValue = 0
         # The app is designed for below size only. changing it may cause issues
         self.screensize = (480,320)
 
-        if "-t" in sys.argv:
+        if self.args.test:
             # Can work on non-raspberry pi devices.
             self.testcase = True
         else:
@@ -67,7 +69,7 @@ class App:
             self.cam.configure(config)
             self.cam.start()
 
-        if "-f" in sys.argv:
+        if self.args.fullscreen:
             self.screen = pygame.display.set_mode(self.screensize, pygame.FULLSCREEN)
         else:
             self.screen = pygame.display.set_mode(self.screensize)
@@ -91,9 +93,13 @@ class App:
         self.state = State.CAMERA
         self.viewPhotoSurface = None
         self.capturedIMG_path = None
+        self.capturedIMG_focus = 0
         self.img1_path = None
+        self.img1_focus = 0
         self.img2_path = None
+        self.img2_focus = 0
         self.fused_path = None
+        self.did_fusion = False #used to show fused images after fusion
 
         # State Specific variables
         # ------------------------------------ #
@@ -261,12 +267,15 @@ class App:
                 self.img1_path = None
                 self.img2_path = None
             case State.VIEW_PHOTO:
-                self.state = State.ASK_PHOTO
+                if self.did_fusion:
+                    self.state = State.CAMERA
+                else:
+                    self.state = State.ASK_PHOTO
                 self.viewPhotoSurface = None
             case State.ASK_PHOTO:
                 self.state = State.CAMERA
             case State.CHANNEL_SELECT:
-                self.state = State.ADVANCE_RULE_SETTING
+                self.state = State.ADVANCE_SETTING
 
     def down_key(self):
         """
@@ -280,10 +289,10 @@ class App:
                 self.quick_active %= 4
             case State.SETTINGS:
                 self.settings_active += 1
-                self.settings_active %= 3
+                self.settings_active %= 2
             case State.ADVANCE_SETTING:
                 self.advance_setting_active += 1
-                self.advance_setting_active %= 2
+                self.advance_setting_active %= 3
             case State.WAVE_SELECT:
                 self.wave_active += 1
                 self.wave_active %= len(self.wavelet_list)
@@ -295,12 +304,15 @@ class App:
                 self.rule_active %= len(self.rule_list)
             case State.ADVANCE_RULE_SETTING:
                 self.advance_rule_setting_active += 1
-                self.advance_rule_setting_active %= 3
+                self.advance_rule_setting_active %= 2
             case State.CHANNEL_SELECT:
                 self.channel_sel_active += 1
                 self.channel_sel_active %= 2
             case State.VIEW_PHOTO:
-                self.state = State.ASK_PHOTO
+                if self.did_fusion:
+                    self.state = State.CAMERA
+                else:
+                    self.state = State.ASK_PHOTO
                 self.viewPhotoSurface = None
 
     def up_key(self):
@@ -315,10 +327,10 @@ class App:
                 self.quick_active %= 4
             case State.SETTINGS:
                 self.settings_active -= 1
-                self.settings_active %= 3
+                self.settings_active %= 2
             case State.ADVANCE_SETTING:
                 self.advance_setting_active -= 1
-                self.advance_setting_active %= 2
+                self.advance_setting_active %= 3
             case State.WAVE_SELECT:
                 self.wave_active -= 1
                 self.wave_active %= len(self.wavelet_list)
@@ -330,12 +342,15 @@ class App:
                 self.rule_active %= len(self.rule_list)
             case State.ADVANCE_RULE_SETTING:
                 self.advance_rule_setting_active -= 1
-                self.advance_rule_setting_active %= 3
+                self.advance_rule_setting_active %= 2
             case State.CHANNEL_SELECT:
                 self.channel_sel_active += 1
                 self.channel_sel_active %= 2
             case State.VIEW_PHOTO:
-                self.state = State.ASK_PHOTO
+                if self.did_fusion:
+                    self.state = State.CAMERA
+                else:
+                    self.state = State.ASK_PHOTO
                 self.viewPhotoSurface = None
             case State.ASK_PHOTO:
                 self.state = State.VIEW_PHOTO
@@ -360,10 +375,13 @@ class App:
                     case _:
                         self.quick_active = 0
             case State.SETTINGS:
-                if self.settings_active == 2:
-                    self.state = State.ADVANCE_RULE_SETTING
-                else:
-                    self.state = State.ADVANCE_SETTING
+                match self.settings_active:
+                    case 0:
+                        self.state = State.ADVANCE_SETTING
+                    case 1:
+                        self.state = State.ADVANCE_RULE_SETTING
+                    case _:
+                        self.settings_active = 0
             case State.ASK_QUIT:
                 self.running = False
             case State.ADVANCE_SETTING:
@@ -372,20 +390,16 @@ class App:
                         self.state = State.WAVE_SELECT
                     case 1:
                         self.state = State.LEVEL_SELECT
+                    case 2:
+                        self.state = State.CHANNEL_SELECT
                     case _:
                         self.advance_setting_active = 0
             case State.WAVE_SELECT:
-                if self.settings_active == 0:
-                    self.fusion_wavelet = self.wavelet_list[self.wave_active]
-                elif self.settings_active == 1:
-                    self.registration_wavelet = self.wavelet_list[self.wave_active]
+                self.fusion_wavelet = self.wavelet_list[self.wave_active]
                 self.state = State.ADVANCE_SETTING
                 self.saveSettings()
             case State.LEVEL_SELECT:
-                if self.settings_active == 0:
-                    self.fusion_level = self.level_active + 1
-                elif self.settings_active == 1:
-                    self.registration_level = self.level_active + 1
+                self.fusion_level = self.level_active + 1
                 self.state = State.ADVANCE_SETTING
                 self.saveSettings()
             case State.RULE_SELECT:
@@ -396,57 +410,62 @@ class App:
                 self.state = State.ADVANCE_RULE_SETTING
                 self.saveSettings()
             case State.ADVANCE_RULE_SETTING:
-                if self.advance_rule_setting_active == 2:
-                    self.state = State.CHANNEL_SELECT
-                else:
-                    self.state = State.RULE_SELECT
+                self.state = State.RULE_SELECT
             case State.CHANNEL_SELECT:
                 if self.channel_sel_active:
                     self.fuse_channel = 3
                 else:
                     self.fuse_channel = 1
-                self.state = State.ADVANCE_RULE_SETTING
+                self.state = State.ADVANCE_SETTING
                 self.saveSettings()
             case State.VIEW_PHOTO:
-                self.state = State.ASK_PHOTO
+                if self.did_fusion:
+                    self.did_fusion = False
+                    self.state = State.CAMERA
+                else:
+                    self.state = State.ASK_PHOTO
                 self.viewPhotoSurface = None
             case State.ASK_PHOTO:
                 if self.img1_path is None:
                     self.img1_path = self.capturedIMG_path
+                    self.img1_focus = self.capturedIMG_focus
                     self.state = State.CAMERA
                 else:
                     self.img2_path = self.capturedIMG_path
+                    self.img2_focus = self.capturedIMG_focus
                     self.state = State.ASK_FUSE
             case State.ASK_FUSE:
                 self.fuse_photos()
                 self.capturedIMG_path = self.fused_path
-                self.state = State.ASK_PHOTO
+                self.state = State.VIEW_PHOTO
+                self.did_fusion = True
 
     def createAssets(self):
         """
         Creates the surfaces which will be used.
         save computation.
         """
-        small_symbol_font = pygame.font.SysFont("Arial", 20)
+        self.small_symbol_font = pygame.font.SysFont("Arial", 20)
         self.big_symbol_font = pygame.font.SysFont("Arial", 50)
 
         self.screenPlaceHolder = pygame.image.load("assets/img_2.png")
         self.settingsIcon = pygame.image.load("assets/settingsicon2.png")
         self.powerIcon = pygame.image.load("assets/power_button.png")
+        self.focusValueSurface = self.small_symbol_font.render(f"F:{self.focusValue}",True, colors.WHITE)
 
         self.reg_symbol_small = pygame.Surface((20,20))
         self.reg_symbol_small.fill(colors.BLACK)
-        temp = small_symbol_font.render("R",True, colors.WHITE)
+        temp = self.small_symbol_font.render("R",True, colors.WHITE)
         self.reg_symbol_small.blit(temp, (5,0), temp.get_rect())
 
         self.fuse_symbol_small = pygame.Surface((20,20))
         self.fuse_symbol_small.fill(colors.BLACK)
-        temp = small_symbol_font.render("F",True, colors.WHITE)
+        temp = self.small_symbol_font.render("F",True, colors.WHITE)
         self.fuse_symbol_small.blit(temp, (5,0), temp.get_rect())
 
         self.star_symbol_small = pygame.Surface((20,20))
         self.star_symbol_small.fill(colors.BLACK)
-        temp = small_symbol_font.render("*",True, colors.WHITE)
+        temp = self.small_symbol_font.render("*",True, colors.WHITE)
         self.star_symbol_small.blit(temp, (5,0), temp.get_rect())
 
         self.reg_symbol_big_off = pygame.Surface((50, 50))
@@ -486,7 +505,7 @@ class App:
         self.channel_text = self.big_symbol_font.render("CHANNEL", True, colors.WHITE)
         self.askFuse_text = self.big_symbol_font.render("FUSE PHOTOS", True, colors.WHITE)
         self.askPhotos_text = self.big_symbol_font.render("USE FOR FUSE", True, colors.WHITE)
-        self.view_text = small_symbol_font.render("VIEW", True, colors.WHITE)
+        self.view_text = self.small_symbol_font.render("VIEW", True, colors.WHITE)
         self.up_text = self.big_symbol_font.render("^", True, colors.WHITE)
 
         self.yes_text = pygame.Surface((100,50))
@@ -507,6 +526,7 @@ class App:
             temp = cv2.cvtColor(temp, cv2.COLOR_YUV420p2RGB)
             temp = pygame.surfarray.make_surface(temp.swapaxes(0,1))
         self.screen.blit(temp, (0, 0), temp.get_rect())
+        self.screen.blit(self.focusValueSurface, (10, 20), self.focusValueSurface.get_rect())
 
         if self.img1_path is not None:
             self.screen.blit(self.star_symbol_small, (10, 230), self.reg_symbol_small.get_rect())
@@ -540,8 +560,7 @@ class App:
     def renderSettings(self):
         self.screen.blit(self.settings_text, (10,0), self.settings_text.get_rect())
         self.screen.blit(self.fusion_text, (10,50), self.fusion_text.get_rect())
-        self.screen.blit(self.registration_text, (10,100), self.registration_text.get_rect())
-        self.screen.blit(self.rule_text, (10,150), self.registration_text.get_rect())
+        self.screen.blit(self.rule_text, (10,100), self.registration_text.get_rect())
 
         pygame.draw.rect(self.screen, colors.WHITE, (0, 50+50*self.settings_active, 480, 50), 5)
 
@@ -571,20 +590,16 @@ class App:
         self.screen.blit(self.viewPhotoSurface, (0,0), self.viewPhotoSurface.get_rect())
 
     def renderAdvanceSetting(self):
-        if self.settings_active == 0:
-            self.screen.blit(self.fusion_text, (10, 0), self.fusion_text.get_rect())
-            wave_txt = self.big_symbol_font.render(self.fusion_wavelet, True, colors.GREEN)
-            lvl_txt = self.big_symbol_font.render(str(self.fusion_level), True, colors.GREEN)
-        elif self.settings_active == 1:
-            self.screen.blit(self.registration_text, (10, 0), self.registration_text.get_rect())
-            wave_txt = self.big_symbol_font.render(self.registration_wavelet, True, colors.GREEN)
-            lvl_txt = self.big_symbol_font.render(str(self.registration_level), True, colors.GREEN)
-        else:
-            raise IllegalEntryError("illegal entry into advance settings")
+        self.screen.blit(self.fusion_text, (10, 0), self.fusion_text.get_rect())
+        wave_txt = self.big_symbol_font.render(self.fusion_wavelet, True, colors.GREEN)
+        lvl_txt = self.big_symbol_font.render(str(self.fusion_level), True, colors.GREEN)
+        ch_txt = self.big_symbol_font.render(str(self.fuse_channel), True, colors.GREEN)
         self.screen.blit(self.wavelet_text, (10, 50), self.wavelet_text.get_rect())
         self.screen.blit(self.level_text, (10, 100), self.level_text.get_rect())
+        self.screen.blit(self.channel_text, (10, 150), self.channel_text.get_rect())
         self.screen.blit(wave_txt, (250, 50), wave_txt.get_rect())
         self.screen.blit(lvl_txt, (250, 100), lvl_txt.get_rect())
+        self.screen.blit(ch_txt, (250, 150), ch_txt.get_rect())
 
         pygame.draw.rect(self.screen, colors.WHITE, (0, 50+50*self.advance_setting_active, 480, 50), 5)
 
@@ -601,18 +616,8 @@ class App:
             y = i * 60 - scroll_offset
             if y < -60 or y > 320:
                 continue
-            if self.settings_active == 1:
-                temp = self.big_symbol_font.render(
-                    wave,
-                    True,
-                    colors.GREEN if self.registration_wavelet == wave else colors.WHITE)
-            elif self.settings_active == 0:
-                temp = self.big_symbol_font.render(
-                    wave,
-                    True,
-                    colors.GREEN if self.fusion_wavelet == wave else colors.WHITE)
-            else:
-                raise IllegalEntryError("illegal entry into wavelet select screen")
+            temp = self.big_symbol_font.render(wave,True,
+                                               colors.GREEN if self.fusion_wavelet == wave else colors.WHITE)
             self.screen.blit(temp,(10,y), temp.get_rect())
         pygame.draw.rect(self.screen, colors.WHITE, (0, 60*self.wave_active - scroll_offset, 480, 60), 5)
 
@@ -629,18 +634,8 @@ class App:
             y = i * 60 - scroll_offset
             if y < -60 or y > 320:
                 continue
-            if self.settings_active == 1:
-                temp = self.big_symbol_font.render(
-                    str(i + 1),
-                    True,
-                    colors.GREEN if self.registration_level == i+1 else colors.WHITE)
-            elif self.settings_active == 0:
-                temp = self.big_symbol_font.render(
-                    str(i + 1),
-                    True,
-                    colors.GREEN if self.fusion_level == i+1 else colors.WHITE)
-            else:
-                raise IllegalEntryError("illegal entry into level select screen")
+            temp = self.big_symbol_font.render(str(i + 1),True,
+                                               colors.GREEN if self.fusion_level == i+1 else colors.WHITE)
             self.screen.blit(temp, (10, y), temp.get_rect())
         pygame.draw.rect(self.screen, colors.WHITE, (0, 60 * self.level_active - scroll_offset, 480, 60), 5)
 
@@ -678,9 +673,6 @@ class App:
         self.screen.blit(self.detail_text, (10, 100), self.detail_text.get_rect())
         temp = self.big_symbol_font.render(self.detail_rule, True, colors.GREEN)
         self.screen.blit(temp, (250, 100), temp.get_rect())
-        self.screen.blit(self.channel_text, (10, 150), self.channel_text.get_rect())
-        temp = self.big_symbol_font.render(str(self.fuse_channel), True, colors.GREEN)
-        self.screen.blit(temp, (250, 150), temp.get_rect())
 
         pygame.draw.rect(self.screen, colors.WHITE, (0, 50 + 50 * self.advance_rule_setting_active, 480, 50), 5)
 
@@ -702,13 +694,16 @@ class App:
         if self.testcase:
             if self.img1_path is None:
                 self.capturedIMG_path = "photos/test/book1.jpg"
+                self.capturedIMG_focus = 0
             else:
                 self.capturedIMG_path = "photos/test/book2.jpg"
+                self.capturedIMG_focus = 0
         else:
             now = datetime.now()
             formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
             self.capturedIMG_path = formatted
+            self.capturedIMG_focus = self.focusValue
             self.cam.capture_file(self.capturedIMG_path)
         print(f"file saved, {self.capturedIMG_path}")
         if self.do_Fusion:
@@ -716,35 +711,43 @@ class App:
 
     def focusFar(self):
         #command v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={value} 0-1023
-        self.focusValue -= 50
+        if 0 < self.focusValue < 100:
+            self.focusValue -= 20
+        else:
+            self.focusValue -= 50
         if self.focusValue < 0:
             self.focusValue = 0
         os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
-        print(f"focus:{self.focusValue}")
+        # print(f"focus:{self.focusValue}")
+        #update focus no on screen
+        self.focusValueSurface = self.small_symbol_font.render(f"F:{self.focusValue}", True, colors.WHITE)
 
     def focusNear(self):
-        self.focusValue += 50
+        if 0 < self.focusValue < 100:
+            self.focusValue += 20
+        else:
+            self.focusValue += 50
         if self.focusValue > 1000:
             self.focusValue = 1000
         os.system(f"v4l2-ctl -d /dev/v4l-subdev1 -c focus_absolute={self.focusValue}")
-        print(f"focus:{self.focusValue}")
+        # print(f"focus:{self.focusValue}")
+        #update focus no on screen
+        self.focusValueSurface = self.small_symbol_font.render(f"F:{self.focusValue}", True, colors.WHITE)
 
     def loadSettings(self):
         """
         Load settings from the settings file.
         """
         if os.path.exists(self.settings_file_path):
-            with open(self.settings_file_path) as file: data = file.readlines()
+            with open(self.settings_file_path) as file: data = [line.strip() for line in file.readlines()]
             try:
-                self.do_Fusion = True if data[0].strip() == "True" else False
-                self.do_registration = True if data[1].strip() == "True" else False
-                self.fusion_wavelet = data[2].strip() if data[2].strip() in self.wavelet_list else self.wavelet_list[0]
-                self.registration_wavelet = data[3].strip() if data[3].strip() in self.wavelet_list else self.wavelet_list[0]
-                self.fusion_level = int(data[4]) if data[4].strip().isdigit() else 2
-                self.registration_level = int(data[5]) if data[5].strip().isdigit() else 2
-                self.approx_rule = data[6].strip() if data[6].strip() in self.rule_list else self.rule_list[0]
-                self.detail_rule = data[7].strip() if data[7].strip() in self.rule_list else self.rule_list[0]
-                self.fuse_channel = int(data[8]) if data[8].strip() in ("1", "3") else 3
+                self.do_Fusion = True if data[0] == "True" else False
+                self.do_registration = True if data[1] == "True" else False
+                self.fusion_wavelet = data[2] if data[2] in self.wavelet_list else self.wavelet_list[0]
+                self.fusion_level = int(data[3]) if data[3].isdigit() else 2
+                self.approx_rule = data[4] if data[4] in self.rule_list else self.rule_list[0]
+                self.detail_rule = data[5] if data[5] in self.rule_list else self.rule_list[0]
+                self.fuse_channel = int(data[6]) if data[6] in ("1", "3") else 3
             except IndexError:
                 raise SettingsError(f"Error loading settings. Try Deleting '{self.settings_file_path}' files")
         else:
@@ -752,9 +755,7 @@ class App:
             self.do_Fusion = True
             self.do_registration = True
             self.fusion_wavelet = self.wavelet_list[0]
-            self.registration_wavelet = self.wavelet_list[0]
             self.fusion_level = 2
-            self.registration_level = 2
             self.approx_rule = self.rule_list[0]
             self.detail_rule = self.rule_list[0]
             self.fuse_channel = 3
@@ -767,9 +768,7 @@ class App:
             file.write(str(self.do_Fusion)+"\n")
             file.write(str(self.do_registration)+"\n")
             file.write(self.fusion_wavelet+"\n")
-            file.write(self.registration_wavelet+"\n")
             file.write(str(self.fusion_level)+"\n")
-            file.write(str(self.registration_level)+"\n")
             file.write(self.approx_rule+"\n")
             file.write(self.detail_rule+"\n")
             file.write(str(self.fuse_channel)+"\n")
@@ -780,14 +779,23 @@ class App:
         If registration flag is active. also perform registration before fusion.
         """
         if self.do_registration:
-            self.img2_path = Registration.register(self.img1_path,
-                                                   self.img2_path,
-                                                   self.registration_wavelet,
-                                                   self.registration_level)
+            if self.img1_focus > self.img2_focus:
+                self.img2_path = Registration.register(self.img1_path, self.img2_path)
+            else:
+                self.img1_path = Registration.register(self.img2_path, self.img1_path)
         self.fused_path = Fusion.fuse(self.img1_path, self.img2_path, self.fusion_wavelet, self.fusion_level,
                                       self.approx_rule, self.detail_rule, self.fuse_channel)
         self.img1_path = None
+        self.img1_focus = 0
         self.img2_path = None
+        self.img2_focus = 0
+
+    def parse_args(self):
+        parser = ArgumentParser()
+        parser.add_argument("-f", "--fullscreen", action="store_true", default=False)
+        parser.add_argument("-t", "--test", action="store_true", default=False)
+
+        self.args = parser.parse_args()
 
 
 if __name__ == "__main__":
