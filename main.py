@@ -818,7 +818,7 @@ class App:
         username = "darshan"
         host = "10.90.75.38"
         destination = r"D:/BTech project/recieved_photos/"
-        cmd = fr'scp "{photo_path}" {username}@{host}:{destination}'
+        cmd = fr'scp "{photo_path}" {username}@{host}:"{destination}"'
 
         os.system(cmd)
 
