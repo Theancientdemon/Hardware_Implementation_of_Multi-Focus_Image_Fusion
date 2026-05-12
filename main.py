@@ -74,6 +74,8 @@ class App:
         else:
             self.screen = pygame.display.set_mode(self.screensize)
 
+        self.send_data = self.args.send is not None
+        self.device = self.args.send
         self.running = True
 
         # Input Type for which input is taken
@@ -81,13 +83,14 @@ class App:
         # Buttons for actual push buttons
         # Touch for Touch screen controls
         # Joy for Joystick controller
-        self.inputType = "Keyboard"
+        self.inputType = "Joy"
         if self.inputType == "Joy":
             pygame.joystick.init()
             if pygame.joystick.get_count() == 0:
                 # no Joystic connected
                 # fallback to keyboard
                 self.inputType = "Keyboard"
+        print(f"{self.inputType=}")
 
         # State defaults to and starts at CAMERA MODE
         self.state = State.CAMERA
@@ -99,6 +102,7 @@ class App:
         self.img2_path = None
         self.img2_focus = 0
         self.fused_path = None
+        self.registered_path = None
         self.did_fusion = False #used to show fused images after fusion
 
         # State Specific variables
@@ -190,6 +194,7 @@ class App:
                 self.running = False
             elif event.type == pygame.JOYBUTTONDOWN:
                 self.inputType = "Joy"
+                print(f"{self.inputType=}")
             elif event.type == pygame.KEYDOWN:
                 match event.key:
                     case pygame.K_ESCAPE:
@@ -208,15 +213,19 @@ class App:
         Handles input from a Video Game Controller.
         """
         for event in pygame.event.get():
+            # print(event)
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.JOYDEVICEREMOVED:
                 if pygame.joystick.get_count() == 0:
                     # fallback to keyboard
                     self.inputType = "Keyboard"
+                print(f"{self.inputType=}")
             elif event.type == pygame.KEYDOWN:
                 self.inputType = "keyboard"
+                print(f"{self.inputType=}")
             elif event.type == pygame.JOYBUTTONDOWN:
+                # print(f"button:{event.button}")
                 match event.button:
                     case 0:
                         self.down_key()
@@ -362,6 +371,7 @@ class App:
         match self.state:
             case State.CAMERA:
                 self.capturePhoto()
+                if self.send_data: self.sendPhoto(self.capturedIMG_path)
             case State.QUICK:
                 match self.quick_active:
                     case 0:
@@ -436,6 +446,7 @@ class App:
                     self.state = State.ASK_FUSE
             case State.ASK_FUSE:
                 self.fuse_photos()
+                if self.send_data: self.sendPhoto(self.fused_path)
                 self.capturedIMG_path = self.fused_path
                 self.state = State.VIEW_PHOTO
                 self.did_fusion = True
@@ -700,7 +711,7 @@ class App:
                 self.capturedIMG_focus = 0
         else:
             now = datetime.now()
-            formatted = f"photos/captured/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
+            formatted = f"photos/captured/Cap{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
             print(formatted)
             self.capturedIMG_path = formatted
             self.capturedIMG_focus = self.focusValue
@@ -781,8 +792,10 @@ class App:
         if self.do_registration:
             if self.img1_focus > self.img2_focus:
                 self.img2_path = Registration.register(self.img1_path, self.img2_path)
+                if self.send_data: self.sendPhoto(self.img2_path)
             else:
                 self.img1_path = Registration.register(self.img2_path, self.img1_path)
+                if self.send_data: self.sendPhoto(self.img1_path)
         self.fused_path = Fusion.fuse(self.img1_path, self.img2_path, self.fusion_wavelet, self.fusion_level,
                                       self.approx_rule, self.detail_rule, self.fuse_channel)
         self.img1_path = None
@@ -792,11 +805,22 @@ class App:
 
     def parse_args(self):
         parser = ArgumentParser()
-        parser.add_argument("-f", "--fullscreen", action="store_true", default=False)
-        parser.add_argument("-t", "--test", action="store_true", default=False)
+        parser.add_argument("-f", "--fullscreen", action="store_true",
+                            help="opens the app in Fullscreen mode")
+        parser.add_argument("-t", "--test", action="store_true",
+                            help="opens the app in test moder.' doesn't use camera but use the images in photos/test'")
+        parser.add_argument("-s", "--send", default= None,
+                            help="sends the photo to device using SCP")
 
         self.args = parser.parse_args()
 
+    def sendPhoto(self, photo_path):
+        username = "darshan"
+        host = "10.90.75.38"
+        destination = r"D:/BTech project/recieved_photos/"
+        cmd = fr'scp "{photo_path}" {username}@{host}:{destination}'
+
+        os.system(cmd)
 
 if __name__ == "__main__":
     App()

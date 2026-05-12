@@ -20,7 +20,7 @@ class Registration:
         reg_img = cv2.warpAffine(query_Color, warp, (query.shape[1], query.shape[0]))
 
         now = datetime.now()
-        reg_path = f"photos/registered/{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
+        reg_path = f"photos/registered/REG{now.year}{now.month:02}{now.day:02}{now.hour:02}{now.minute:02}{now.second:02}.png"
         cv2.imwrite(reg_path, reg_img)
 
         return reg_path
