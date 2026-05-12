@@ -815,10 +815,9 @@ class App:
         self.args = parser.parse_args()
 
     def sendPhoto(self, photo_path):
-        username = "darshan"
-        host = "10.90.75.38"
+        device = self.args.send
         destination = r"D:/BTech project/recieved_photos/"
-        cmd = fr'scp "{photo_path}" {username}@{host}:"{destination}"'
+        cmd = fr'scp "{photo_path}" {device}:"{destination}"'
 
         os.system(cmd)
 
