@@ -3,7 +3,7 @@ from datetime import datetime
 import cv2
 import numpy as np
 from numpy import uint8, clip, where
-from pywt import dwt2, waverec2, Wavelet
+from pywt import dwt2, waverec2
 from scipy.ndimage import median_filter
 from scipy.signal import convolve2d
 
