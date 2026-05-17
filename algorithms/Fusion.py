@@ -10,7 +10,7 @@ from scipy.signal import convolve2d
 
 class Fusion:
     # List of Wavelets which can be used
-    Wavelet_list = ["haar", "db1", "db2", "db3", "db4", "db5", "db6", "db7", "db8", "db9", "db10"]
+    Wavelet_list = ["haar", "db1", "db2", "db3", "db5", "bior2.4", "bior2.8", "sym10", "sym12"]
     # All Rules that can be used.
     # To add a rule, update the @fuseBandbyRule and below list
     Rules = ["lv", "sml", "max", "min", "avg" ]
