@@ -789,6 +789,9 @@ class App:
         Fuse the 'img1_path' and 'img2_path' photos together.
         If registration flag is active. also perform registration before fusion.
         """
+        self.screen.fill(colors.BLACK)
+        self.screen.blit(self.please_wait_screen,(0,0), self.please_wait_screen.get_rect())
+
         if self.do_registration:
             if self.img1_focus > self.img2_focus:
                 self.img2_path = Registration.register(self.img1_path, self.img2_path)
