@@ -535,7 +535,7 @@ class App:
         else:
             temp = self.cam.capture_array("lores")
             temp = cv2.cvtColor(temp, cv2.COLOR_YUV420p2RGB)
-            temp = pygame.surfarray.make_surface(temp.swapaxes(0,1))
+            # temp = pygame.surfarray.make_surface(temp.swapaxes(0,1))
         self.screen.blit(temp, (0, 0), temp.get_rect())
         self.screen.blit(self.focusValueSurface, (10, 20), self.focusValueSurface.get_rect())
 
