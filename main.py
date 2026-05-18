@@ -790,7 +790,7 @@ class App:
         If registration flag is active. also perform registration before fusion.
         """
         self.screen.fill(colors.BLACK)
-        self.screen.blit(self.please_wait_screen,(0,0), self.please_wait_screen.get_rect())
+        self.screen.blit(self.please_wait_screen,(100,100), self.please_wait_screen.get_rect())
 
         pygame.display.flip()
 
