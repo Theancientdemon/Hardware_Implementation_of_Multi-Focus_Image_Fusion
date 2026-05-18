@@ -790,7 +790,7 @@ class App:
         If registration flag is active. also perform registration before fusion.
         """
         if self.do_registration:
-            if self.img1_focus < self.img2_focus:
+            if self.img1_focus > self.img2_focus:
                 self.img2_path = Registration.register(self.img1_path, self.img2_path)
                 if self.send_data: self.sendPhoto(self.img2_path)
             else:
